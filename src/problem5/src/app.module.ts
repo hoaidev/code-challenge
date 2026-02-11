@@ -4,10 +4,12 @@ import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis'
 import { GamesModule } from './modules/games/games.module';
 import { GamePlayerModule } from './modules/game-player/game-player.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
+import { OtelLoggerModule } from './telemetry/otel-logger.module';
 import { Redis } from 'ioredis';
 
 @Module({
   imports: [
+    OtelLoggerModule,
     PrismaModule,
     GamesModule,
     GamePlayerModule,

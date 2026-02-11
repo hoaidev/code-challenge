@@ -6,37 +6,36 @@ A NestJS application for managing games and player gameplay records with Prisma 
 
 ```
 my-nest-project/
-├── src/                              # Source code
+├── src/
 │   ├── main.ts                       # Application entry point
 │   ├── app.module.ts                 # Root application module
+│   ├── telemetry/                    # OpenTelemetry observability
+│   │   ├── telemetry.ts              # OTel SDK init (conditional)
+│   │   ├── otel-logger.service.ts    # NestJS Logger -> OTel Logs bridge
+│   │   └── otel-logger.module.ts     # Global logger module
+│   ├── interceptors/
+│   │   └── tracing.interceptor.ts    # HTTP request span creation
+│   ├── filters/
+│   │   └── http-exception.filter.ts  # Global exception handler
 │   ├── modules/
 │   │   ├── base/                     # Base service (shared)
-│   │   │   └── base.service.ts
 │   │   ├── games/                    # Games module (CRUD)
-│   │   │   ├── games.module.ts
-│   │   │   ├── games.controller.ts
-│   │   │   ├── games.service.ts
-│   │   │   └── games.schema.ts
 │   │   ├── game-player/              # Game-Player relationship module
-│   │   │   ├── game-player.module.ts
-│   │   │   ├── game-player.controller.ts
-│   │   │   ├── game-player.service.ts
-│   │   │   └── game-player.schema.ts
-│   │   └── prisma/                   # Database service
-│   │       ├── prisma.module.ts
-│   │       └── prisma.service.ts
+│   │   └── prisma/                   # Database service (with query tracing)
 │   ├── pipes/
 │   │   └── typebox-validation.pipe.ts
 │   └── utils/
 │       └── slug.ts
 ├── prisma/                           # Database configuration
-│   ├── schema.prisma                 # Prisma schema
-│   ├── migrations/                   # Database migrations
-│   └── generated/                    # Generated Prisma client
-├── test/                             # E2E tests
-├── package.json
-├── tsconfig.json
-└── nest-cli.json
+│   ├── schema.prisma
+│   ├── migrations/
+│   └── generated/
+├── otel-collector-config.yml         # OTel Collector pipeline config
+├── tempo-config.yml                  # Grafana Tempo trace storage config
+├── grafana-datasources.yml           # Grafana datasource provisioning
+├── docker-compose.yml
+├── Dockerfile
+└── package.json
 ```
 
 ## Technologies
@@ -44,6 +43,7 @@ my-nest-project/
 - **Framework**: NestJS v11
 - **Database**: PostgreSQL with Prisma ORM v7
 - **Cache / Rate Limiting**: Redis
+- **Observability**: OpenTelemetry (traces + logs) → Grafana Tempo & Loki
 - **Validation**: Typebox
 - **API Documentation**: Swagger
 - **Runtime**: Node.js / Bun
@@ -64,6 +64,10 @@ This starts:
 - **PostgreSQL** on port `5433` (host) → `5432` (container)
 - **Redis** on port `9379` (host) → `6379` (container)
 - **App** on port `5000`
+- **OTel Collector** on port `4318` (OTLP HTTP receiver)
+- **Loki** on port `3100` (log storage)
+- **Tempo** on port `3200` (trace storage)
+- **Grafana** on port `30000` (dashboards)
 
 Database migrations are applied automatically on startup.
 
@@ -97,6 +101,37 @@ The following environment variables are configured in `docker-compose.yml`:
 | `APPLY_MIGRATION_STARTUP` | `true` | Auto-run Prisma migrations on startup |
 | `THROTTLE_LIMIT` | `10` | Rate limit: max requests per window |
 | `THROTTLE_TTL` | `60` | Rate limit: window duration in seconds |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | OTel Collector endpoint (enables observability) |
+| `OTEL_SERVICE_NAME` | `problem5-api` | Service name in traces and logs |
+
+## Observability
+
+OpenTelemetry is enabled automatically when running with Docker Compose (via `OTEL_EXPORTER_OTLP_ENDPOINT`). In development mode, OTel is skipped and only console logging is used.
+
+### Grafana
+
+Access Grafana at `http://localhost:30000` (default credentials: `admin` / `admin`).
+
+Loki and Tempo datasources are auto-provisioned with log-to-trace correlation.
+
+### Traces (Tempo)
+
+Go to **Explore → Tempo → Search** to view distributed traces. Each HTTP request generates a trace with nested spans:
+
+```
+HTTP GET /games (TracingInterceptor)
+└── prisma:Game.findMany (Prisma query tracing)
+```
+
+### Logs (Loki)
+
+Go to **Explore → Loki** and query:
+
+```
+{service_name="problem5-api"}
+```
+
+Each log entry includes `trace_id` and `span_id` for correlation. Click a trace ID to jump to the Tempo trace view.
 
 ## Development Mode
 

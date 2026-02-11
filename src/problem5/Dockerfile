@@ -23,13 +23,29 @@ COPY tsconfig.json tsconfig.build.json nest-cli.json ./
 # Generate Prisma client (dummy URL – generate only reads the schema, no connection needed)
 RUN DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" bunx prisma generate
 
-# Bundle into a single JS file (externalize optional NestJS peer deps)
+# Bundle into a single JS file (externalize optional NestJS peer deps + OTel)
 RUN bun build --minify --target bun --outfile ./dist/server.js src/main.ts \
     --external @nestjs/microservices \
     --external @nestjs/websockets \
     --external class-transformer \
     --external class-transformer/storage \
-    --external class-validator
+    --external class-validator \
+    --external '@opentelemetry/*'
+
+# Install only OTel runtime deps with all transitive dependencies in a clean directory
+RUN mkdir -p /otel-deps && cd /otel-deps && \
+    echo '{"dependencies":{' \
+      '"@opentelemetry/api":"1.9.0",' \
+      '"@opentelemetry/api-logs":"0.211.0",' \
+      '"@opentelemetry/sdk-trace-node":"2.5.0",' \
+      '"@opentelemetry/sdk-logs":"0.211.0",' \
+      '"@opentelemetry/resources":"2.5.0",' \
+      '"@opentelemetry/semantic-conventions":"1.39.0",' \
+      '"@opentelemetry/exporter-trace-otlp-http":"0.211.0",' \
+      '"@opentelemetry/exporter-logs-otlp-http":"0.211.0"' \
+    '}}' > package.json && \
+    bun install --production && \
+    rm -f package.json bun.lock
 
 # ==========================================
 # Stage 2: Runtime – distroless
@@ -54,6 +70,9 @@ COPY --from=builder --chown=65532:65532 /app/prisma/generated ./prisma/generated
 
 # Copy only runtime-needed packages (swagger-ui-dist has static assets read from disk at runtime)
 COPY --from=builder --chown=65532:65532 /app/node_modules/swagger-ui-dist ./node_modules/swagger-ui-dist
+
+# Copy OpenTelemetry packages + all transitive deps (externalized from bundle — CJS modules don't bundle cleanly with Bun)
+COPY --from=builder --chown=65532:65532 /otel-deps/node_modules/ ./node_modules/
 
 ENV NODE_ENV=production
 ENV PORT=5000
