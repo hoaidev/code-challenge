@@ -19,7 +19,7 @@ export class TypeboxValidationPipe<T extends TSchema> implements PipeTransform {
       const errors = [...this.check.Errors(converted)];
       throw new BadRequestException({
         message: 'Validation failed',
-        errors: errors.map((e) => ({ path: e.path, message: e.message })),
+        errors,
       });
     }
 

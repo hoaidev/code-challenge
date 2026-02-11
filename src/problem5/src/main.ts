@@ -4,6 +4,7 @@ import * as dotenv from 'dotenv';
 import { configureNestJsTypebox, patchNestJsSwagger } from 'nestjs-typebox';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from '@nestjs/common';
+import { HttpExceptionFilter } from './filters/http-exception.filter';
 
 dotenv.config();
 
@@ -22,10 +23,12 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
+  app.useGlobalFilters(new HttpExceptionFilter());
+
   await app.listen(process.env.PORT ?? 5000);
 
   Logger.log(`Application is running on: ${await app.getUrl()}`);
   Logger.log(`Swagger is running on: ${await app.getUrl()}/api`);
 }
 
-bootstrap();
+void bootstrap();
