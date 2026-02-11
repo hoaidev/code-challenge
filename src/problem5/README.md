@@ -1,6 +1,6 @@
 # My NestJS Project
 
-A NestJS application for managing games and player gameplay records with Prisma ORM and SQLite database.
+A NestJS application for managing games and player gameplay records with Prisma ORM and PostgreSQL database.
 
 ## Project Structure
 
@@ -42,63 +42,83 @@ my-nest-project/
 ## Technologies
 
 - **Framework**: NestJS v11
-- **Database**: SQLite with Prisma ORM v7
+- **Database**: PostgreSQL with Prisma ORM v7
+- **Cache / Rate Limiting**: Redis
 - **Validation**: Typebox
 - **API Documentation**: Swagger
 - **Runtime**: Node.js / Bun
 
 ## Prerequisites
 
-- Node.js 18+ or Bun
-- npm, pnpm, or bun package manager
+- Docker and Docker Compose
 
-## Installation
+## Running with Docker (Recommended)
+
+Start the entire stack (PostgreSQL, Redis, and the app) with a single command:
 
 ```bash
-# Install dependencies
-npm install
-# or
+docker compose up -d
+```
+
+This starts:
+- **PostgreSQL** on port `5433` (host) → `5432` (container)
+- **Redis** on port `9379` (host) → `6379` (container)
+- **App** on port `5000`
+
+Database migrations are applied automatically on startup.
+
+To stop the stack:
+
+```bash
+docker compose down
+```
+
+To rebuild after code changes:
+
+```bash
+docker compose up -d --build
+```
+
+To view logs:
+
+```bash
+docker compose logs -f app
+```
+
+### Environment Variables
+
+The following environment variables are configured in `docker-compose.yml`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | `postgresql://postgres:postgres@postgres:5432/problem5` | PostgreSQL connection string |
+| `REDIS_URL` | `redis://redis:6379` | Redis connection string |
+| `PORT` | `5000` | Application port |
+| `APPLY_MIGRATION_STARTUP` | `true` | Auto-run Prisma migrations on startup |
+| `THROTTLE_LIMIT` | `10` | Rate limit: max requests per window |
+| `THROTTLE_TTL` | `60` | Rate limit: window duration in seconds |
+
+## Development Mode
+
+Start PostgreSQL/Redis via Docker and run the app locally with hot-reload:
+
+```bash
+./start.dev.sh
+```
+
+This script will:
+1. Start PostgreSQL and Redis containers if not already running
+2. Run the app in watch mode (`bun run start:dev`)
+
+### Prerequisites
+
+- Bun or NodeJS
+- Docker and Docker Compose
+
+### Installation
+
+```bash
 bun install
-```
-
-## Environment Setup
-
-Create a `.env` file in the root directory:
-
-```env
-DATABASE_URL=file:./app.db
-APPLY_MIGRATION_STARTUP=true
-PORT=5000
-```
-
-## Database Setup
-
-```bash
-# Generate Prisma client
-npx prisma generate
-
-# Run migrations
-npx prisma migrate dev
-
-# View database (optional)
-npx prisma studio
-```
-
-## Running the Application
-
-```bash
-# Development mode
-npm run start
-
-# Watch mode (auto-reload)
-npm run start:dev
-
-# Debug mode
-npm run start:debug
-
-# Production mode
-npm run build
-npm run start:prod
 ```
 
 The application runs on `http://localhost:5000` by default.

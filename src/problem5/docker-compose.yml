@@ -39,6 +39,30 @@ services:
     networks:
       - app-network
 
+  # Backend API
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: problem5-app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/problem5
+      APPLY_MIGRATION_STARTUP: "true"
+      THROTTLE_LIMIT: 10
+      THROTTLE_TTL: 60
+      REDIS_URL: redis://redis:6379
+      PORT: 5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge

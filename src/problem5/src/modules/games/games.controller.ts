@@ -8,7 +8,7 @@ import {
   Delete,
   Query,
 } from '@nestjs/common';
-import { ApiQuery } from '@nestjs/swagger';
+import { ApiQuery, ApiTags } from '@nestjs/swagger';
 import { GamesService } from './games.service';
 import { Type } from '@sinclair/typebox';
 import { Validate } from 'nestjs-typebox';
@@ -24,6 +24,7 @@ import {
 import { TypeboxValidationPipe } from '@/pipes/typebox-validation.pipe';
 import { GameGenre, GameStatus, GameType } from '@/generated/enums';
 
+@ApiTags('Game Endpoints')
 @Controller('games')
 export class GamesController {
   constructor(private readonly gamesService: GamesService) {}

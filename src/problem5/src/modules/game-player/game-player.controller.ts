@@ -9,10 +9,11 @@ import {
   type QueryGamePlayerDtoType,
   QueryGamePlayerSchema,
 } from './game-player.schema';
-import { ApiQuery } from '@nestjs/swagger';
+import { ApiQuery, ApiTags } from '@nestjs/swagger';
 import { TypeboxValidationPipe } from '@/pipes/typebox-validation.pipe';
 import { Type } from '@sinclair/typebox';
 
+@ApiTags('Game Player Endpoints')
 @Controller('game-player')
 export class GamePlayerController {
   constructor(private readonly gamePlayerService: GamePlayerService) {}
