@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { BaseService } from '../base/base.service';
 import {
   CreateGamePlayerDtoType,
@@ -16,7 +16,7 @@ export class GamePlayerService extends BaseService {
     });
 
     if (!game || game.status !== 'PUBLISHED' || game.deletedAt) {
-      throw new Error('Game not found');
+      throw new NotFoundException('Game not found');
     }
 
     const player = await this.prisma.player.upsert({
@@ -43,11 +43,11 @@ export class GamePlayerService extends BaseService {
   ): Promise<GamePlayerDtoType[]> {
     const where: Prisma.GamePlayWhereInput = {
       deletedAt: null,
-      ...(query.limit && { take: query.limit }),
-      ...(query.offset && { skip: query.offset }),
     };
     const result = await this.prisma.gamePlay.findMany({
       where,
+      ...(query.limit && { take: query.limit }),
+      ...(query.offset && { skip: query.offset }),
       select: {
         score: true,
         createdAt: true,

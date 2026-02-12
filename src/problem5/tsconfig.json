@@ -28,5 +28,5 @@
     // "verbatimModuleSyntax": true,
     "noEmit": true
   },
-  "include": ["src", "prisma/generated"]
+  "include": ["src", "prisma/generated", "test"]
 }

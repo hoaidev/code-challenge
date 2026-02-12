@@ -6,6 +6,7 @@ import { configureNestJsTypebox, patchNestJsSwagger } from 'nestjs-typebox';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { HttpExceptionFilter } from './filters/http-exception.filter';
 import { TracingInterceptor } from './interceptors/tracing.interceptor';
+import { NullResponseInterceptor } from './interceptors/null-response.interceptor';
 import { OtelLoggerService } from './telemetry/otel-logger.service';
 
 dotenv.config();
@@ -29,7 +30,10 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
 
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(new TracingInterceptor());
+  app.useGlobalInterceptors(
+    new NullResponseInterceptor(),
+    new TracingInterceptor(),
+  );
 
   await app.listen(process.env.PORT ?? 5000);
 

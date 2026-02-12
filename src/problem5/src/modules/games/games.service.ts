@@ -25,12 +25,12 @@ export class GamesService extends BaseService {
       ...(query.status && { status: query.status }),
       ...(query.type && { type: query.type }),
       ...(query.genre && { genre: query.genre }),
-      ...(query.limit && { take: query.limit }),
-      ...(query.offset && { skip: query.offset }),
     };
     return await this.prisma.game.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      ...(query.limit && { take: query.limit }),
+      ...(query.offset && { skip: query.offset }),
     });
   }
 
@@ -42,13 +42,17 @@ export class GamesService extends BaseService {
     slug: string,
     updateGameDto: UpdateGameDtoType,
   ): Promise<GameDtoType | null> {
+    const existing = await this.prisma.game.findUnique({ where: { slug } });
+    if (!existing) return null;
     return await this.prisma.game.update({
       where: { slug },
       data: updateGameDto,
     });
   }
 
-  async remove(slug: string) {
+  async remove(slug: string): Promise<GameDtoType | null> {
+    const existing = await this.prisma.game.findUnique({ where: { slug } });
+    if (!existing) return null;
     return await this.prisma.game.update({
       where: { slug },
       data: { deletedAt: new Date() },

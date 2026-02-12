@@ -32,7 +32,11 @@ export class GamesController {
   @Post()
   @Validate({
     request: [{ type: 'body', schema: CreateGameSchema }],
-    response: { schema: CreateGameSchema, responseCode: 201 },
+    response: {
+      schema: CreateGameSchema,
+      responseCode: 201,
+      stripUnknownProps: false,
+    },
   })
   create(@Body() body: CreateGameDtoType) {
     return this.gamesService.create(body);
@@ -55,12 +59,6 @@ export class GamesController {
   }
 
   @Get(':slug')
-  @Validate({
-    response: {
-      schema: Type.Union([GameSchema, Type.Null()]),
-      responseCode: 200,
-    },
-  })
   findOne(@Param('slug') slug: string) {
     return this.gamesService.findOne(slug);
   }
