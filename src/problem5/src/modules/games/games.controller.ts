@@ -23,6 +23,9 @@ import {
 } from './games.schema';
 import { TypeboxValidationPipe } from '@/pipes/typebox-validation.pipe';
 import { GameGenre, GameStatus, GameType } from '@/generated/enums';
+import { Cached, InvalidateCache } from '@/decorators/cache.decorators';
+
+const GAMES_TTL = parseInt(process.env.CACHE_GAMES_TTL ?? '60');
 
 @ApiTags('Game Endpoints')
 @Controller('games')
@@ -38,6 +41,7 @@ export class GamesController {
       stripUnknownProps: false,
     },
   })
+  @InvalidateCache('games:list:*')
   create(@Body() body: CreateGameDtoType) {
     return this.gamesService.create(body);
   }
@@ -52,6 +56,7 @@ export class GamesController {
   @Validate({
     response: { schema: Type.Array(GameSchema), responseCode: 200 },
   })
+  @Cached({ prefix: 'games:list', ttl: GAMES_TTL })
   findAll(
     @Query(new TypeboxValidationPipe(QueryGameSchema)) query: QueryGameDtoType,
   ) {
@@ -59,6 +64,7 @@ export class GamesController {
   }
 
   @Get(':slug')
+  @Cached({ prefix: 'games:detail', ttl: GAMES_TTL, paramKey: 'slug' })
   findOne(@Param('slug') slug: string) {
     return this.gamesService.findOne(slug);
   }
@@ -75,6 +81,7 @@ export class GamesController {
       stripUnknownProps: true,
     },
   })
+  @InvalidateCache('games:detail::slug', 'games:list:*')
   update(
     @Param('slug') slug: string,
     @Body() updateGameDto: UpdateGameDtoType,
@@ -83,6 +90,7 @@ export class GamesController {
   }
 
   @Delete(':slug')
+  @InvalidateCache('games:detail::slug', 'games:list:*')
   remove(@Param('slug') slug: string) {
     return this.gamesService.remove(slug);
   }

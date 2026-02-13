@@ -13,7 +13,10 @@ my-nest-project/
 │   │   ├── telemetry.ts              # OTel SDK init (conditional)
 │   │   ├── otel-logger.service.ts    # NestJS Logger -> OTel Logs bridge
 │   │   └── otel-logger.module.ts     # Global logger module
+│   ├── decorators/
+│   │   └── cache.decorators.ts       # @Cached / @InvalidateCache decorators
 │   ├── interceptors/
+│   │   ├── http-cache.interceptor.ts # Global Redis cache interceptor
 │   │   └── tracing.interceptor.ts    # HTTP request span creation
 │   ├── filters/
 │   │   └── http-exception.filter.ts  # Global exception handler
@@ -21,7 +24,8 @@ my-nest-project/
 │   │   ├── base/                     # Base service (shared)
 │   │   ├── games/                    # Games module (CRUD)
 │   │   ├── game-player/              # Game-Player relationship module
-│   │   └── prisma/                   # Database service (with query tracing)
+│   │   ├── prisma/                   # Database service (with query tracing)
+│   │   └── redis/                    # Redis client + cache service (global)
 │   ├── pipes/
 │   │   └── typebox-validation.pipe.ts
 │   └── utils/
@@ -101,6 +105,8 @@ The following environment variables are configured in `docker-compose.yml`:
 | `APPLY_MIGRATION_STARTUP` | `true` | Auto-run Prisma migrations on startup |
 | `THROTTLE_LIMIT` | `10` | Rate limit: max requests per window |
 | `THROTTLE_TTL` | `60` | Rate limit: window duration in seconds |
+| `CACHE_GAMES_TTL` | `60` | Cache TTL for game endpoints (seconds) |
+| `CACHE_GAME_PLAYER_TTL` | `30` | Cache TTL for game-player endpoints (seconds) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://otel-collector:4318` | OTel Collector endpoint (enables observability) |
 | `OTEL_SERVICE_NAME` | `problem5-api` | Service name in traces and logs |
 
@@ -132,6 +138,32 @@ Go to **Explore → Loki** and query:
 ```
 
 Each log entry includes `trace_id` and `span_id` for correlation. Click a trace ID to jump to the Tempo trace view.
+
+## Caching
+
+Redis-backed response caching is implemented via a global `HttpCacheInterceptor` driven by two decorators:
+
+- **`@Cached({ prefix, ttl, paramKey? })`** — applied to GET handlers. Builds a cache key from the prefix and sorted query params (or a route param when `paramKey` is set). Returns cached responses on hit; caches the DB result on miss.
+- **`@InvalidateCache(...patterns)`** — applied to mutation handlers (POST/PATCH/DELETE). Invalidates matching cache keys after a successful response. Patterns support `:paramName` placeholders resolved from route params (e.g. `'games:detail::slug'`).
+
+### Cache Keys
+
+| Pattern | Example | TTL |
+|---|---|---|
+| `games:list:{params}` | `games:list:genre=ACTION&status=PUBLISHED` | 60s |
+| `games:detail:{slug}` | `games:detail:alpha-strike-x8f3k2` | 60s |
+| `game-player:list:{params}` | `game-player:list:limit=10&offset=0` | 30s |
+
+### Invalidation
+
+| Mutation | Patterns Invalidated |
+|---|---|
+| `POST /games` | `games:list:*` |
+| `PATCH /games/:slug` | `games:detail:{slug}` + `games:list:*` |
+| `DELETE /games/:slug` | `games:detail:{slug}` + `games:list:*` |
+| `POST /game-player` | `game-player:list:*` |
+
+Pattern deletion uses `SCAN` (non-blocking) rather than `KEYS`.
 
 ## Development Mode
 
@@ -193,31 +225,31 @@ Swagger documentation is available at `http://localhost:5000/api` when the appli
 
 ```bash
 # Unit tests
-npm run test
+bun run test
 
 # Watch mode
-npm run test:watch
+bun run test:watch
 
 # Test coverage
-npm run test:cov
+bun run test:cov
 
-# E2E tests
-npm run test:e2e
+# E2E tests (starts dev server + Docker services, runs tests, generates report)
+./start.e2e.sh
 ```
 
 ## Available Scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm run build` | Compile TypeScript |
-| `npm run start` | Start in development mode |
-| `npm run start:dev` | Start with watch mode |
-| `npm run start:debug` | Start with debug mode |
-| `npm run start:prod` | Run production build |
-| `npm run lint` | Run ESLint |
-| `npm run format` | Format with Prettier |
-| `npm run test` | Run unit tests |
-| `npm run test:e2e` | Run E2E tests |
+| `bun run build` | Compile TypeScript |
+| `bun run start` | Start in development mode |
+| `bun run start:dev` | Start with watch mode |
+| `bun run start:debug` | Start with debug mode |
+| `bun run start:prod` | Run production build |
+| `bun run lint` | Run ESLint |
+| `bun run format` | Format with Prettier |
+| `bun run test` | Run unit tests |
+| `bun run test:e2e` | Run E2E tests |
 
 ## License
 

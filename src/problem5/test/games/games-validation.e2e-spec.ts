@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { Redis } from 'ioredis';
 import { PrismaService } from '@/modules/prisma/prisma.service';
 import { createTestApp } from '../helpers/test-app.helper';
 import { truncateAllTables } from '../helpers/db-cleanup.helper';
@@ -10,9 +11,10 @@ import { buildCreateGameDto } from '../helpers/game-factory.helper';
 describe('Games Validation (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
+  let redis: Redis;
 
   beforeAll(async () => {
-    ({ app, prisma } = await createTestApp());
+    ({ app, prisma, redis } = await createTestApp());
   });
 
   afterAll(async () => {
@@ -20,6 +22,7 @@ describe('Games Validation (e2e)', () => {
   });
 
   beforeEach(async () => {
+    await redis.flushdb();
     await truncateAllTables(prisma);
   });
 

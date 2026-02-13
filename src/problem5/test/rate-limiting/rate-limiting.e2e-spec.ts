@@ -6,10 +6,11 @@ import { ThrottlerGuard, ThrottlerModule, seconds } from '@nestjs/throttler';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import { configureNestJsTypebox } from 'nestjs-typebox';
 import { AppModule } from '@/app.module';
 import { GamesModule } from '@/modules/games/games.module';
+import { RedisModule } from '@/modules/redis/redis.module';
 import { HttpExceptionFilter } from '@/filters/http-exception.filter';
 
 configureNestJsTypebox({ patchSwagger: false, setFormats: true });
@@ -66,6 +67,7 @@ describe('Rate Limiting (e2e)', () => {
     beforeAll(async () => {
       const moduleFixture = await Test.createTestingModule({
         imports: [
+          RedisModule,
           GamesModule,
           ThrottlerModule.forRoot({
             throttlers: [{ limit: THROTTLE_LIMIT, ttl: seconds(60) }],
@@ -134,6 +136,7 @@ describe('Rate Limiting (e2e)', () => {
 async function createShortTtlApp(): Promise<INestApplication<App>> {
   const moduleFixture = await Test.createTestingModule({
     imports: [
+      RedisModule,
       GamesModule,
       ThrottlerModule.forRoot({
         throttlers: [{ limit: 3, ttl: seconds(1) }],
